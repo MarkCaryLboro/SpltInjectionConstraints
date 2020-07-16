@@ -42,10 +42,7 @@ classdef singleShot
                         %--------------------------------------------------
                         % Assign the calibration data
                         %--------------------------------------------------
-                        for Q = 1:numel( ImmutableNames )
-                            obj.( ImmutableNames{ Q } ) =...
-                                CalStructure.( ImmutableNames{ Q } );
-                        end
+                        obj = obj.assignCalData( CalStructure );
                     otherwise
                         %--------------------------------------------------
                         % Print out missing field names & throw an error
@@ -64,6 +61,31 @@ classdef singleShot
     end % Constructor and ordinary methods
     
     methods ( Access = private )
+        function obj = assignCalData( obj, CalStructure )
+            %--------------------------------------------------------------
+            % Assign the calibration data to the correct properties
+            %
+            % obj = obj.assignCalData( CalStructure );
+            %
+            % Input Arguments:
+            %
+            % CalStructure  --> Structure of lookup table objects with
+            %                   field names:
+            %
+            %   FNINJSLOPE1F        --> Injector slope: (fcnLookUp)
+            %   FNDINJSLPCOR        --> Injection slope correction factor: (fcnLookUp)
+            %   FNINJ_OP_DLY        --> Injector opening delay: (fcnLookUp)
+            %   FNFUL_INJ_OFF_COR   --> Injector offset correction factor: (fcnLookUp)
+            %   FNINJ_CL_DLY        --> Injector offset closing delay: (tableLookUp)
+            %   DIMINPW1            --> Injection effecctive pulesidth:(double)
+            %   DIPWADJ             --> Injection pulsewidth adjustment factor
+            %--------------------------------------------------------------
+            Names = fieldnames( CalStructure );
+            for Q = 1:numel( Names )
+                obj.( Names( Q ) ) = CalStructure. )
+            end
+        end
+        
         function Names = getImmutableProps( obj )
             %--------------------------------------------------------------
             % Return the names of all the immutable properties in the class

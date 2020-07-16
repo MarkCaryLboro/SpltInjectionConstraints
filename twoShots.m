@@ -1,4 +1,4 @@
-classdef twoShots < handle
+classdef twoShots < singleShot 
     
     methods
         function injStateMsg( obj )

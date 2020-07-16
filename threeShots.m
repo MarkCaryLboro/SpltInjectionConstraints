@@ -1,4 +1,4 @@
-classdef threeShots
+classdef threeShots < singleShot 
     
     methods
         function injStateMsg( obj )
