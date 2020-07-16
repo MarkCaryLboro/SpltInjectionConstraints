@@ -42,7 +42,10 @@ classdef singleShot
                         %--------------------------------------------------
                         % Assign the calibration data
                         %--------------------------------------------------
-                        obj = obj.assignCalData( CalStructure );
+                        for Q = 1:numel( ImmutableNames )
+                            obj.( ImmutableNames{ Q } ) =...
+                                CalStructure.( ImmutableNames{ Q } );
+                        end
                     otherwise
                         %--------------------------------------------------
                         % Print out missing field names & throw an error
@@ -55,35 +58,72 @@ classdef singleShot
             end
         end
         
-        function injStateMsg( obj )
-            fprintf('\nSingle intake injection requested\n');
+        function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
+            %--------------------------------------------------------------
+            % Calculate the total and effective injection pulsewidths 
+            % in micro seconds
+            %
+            % [ LCL_FUEL_PW, DI_PWEFF ] = obj.calcPulseWidth( MF, FRP, FRT )
+            %
+            % Input Arguments:
+            %
+            % MF    --> Desired fuel mass [lb]
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            %
+            % Output Arguments:
+            %
+            % LCL_FUEL_PW   --> Total fuel pulsewidth
+            % DI_PWEFF      --> Effective fuel pulsewidth
+            %--------------------------------------------------------------
+            Slope = obj.calcSlope( FRP, FRT );
+            %--------------------------------------------------------------
+            % Calculate the effective pulsewidth and apply the lower clip
+            %--------------------------------------------------------------
+            DI_PWEFF = MF./Slope;
+            Idx = DI_PWEFF < obj.DIMINPW1;
+            DI_PWEFF( Idx ) = obj.DIMINPW1;
+            %--------------------------------------------------------------
+            % Calculate the injector offset
+            %--------------------------------------------------------------
+            Offset = obj.calcOffset( FRP, FRT, DI_PWEFF );
+            %--------------------------------------------------------------
+            % Calculate the total pulsewidth
+            %--------------------------------------------------------------
+            LCL_FUEL_PW = DI_PWEFF
         end
     end % Constructor and ordinary methods
     
     methods ( Access = private )
-        function obj = assignCalData( obj, CalStructure )
+        function Slp = calcSlope( obj, FRP, FRT )
             %--------------------------------------------------------------
-            % Assign the calibration data to the correct properties
+            % calculate the injector slope for the DI system
             %
-            % obj = obj.assignCalData( CalStructure );
+            % Slp = obj.calcSlope( FRP, FRT );
             %
             % Input Arguments:
             %
-            % CalStructure  --> Structure of lookup table objects with
-            %                   field names:
-            %
-            %   FNINJSLOPE1F        --> Injector slope: (fcnLookUp)
-            %   FNDINJSLPCOR        --> Injection slope correction factor: (fcnLookUp)
-            %   FNINJ_OP_DLY        --> Injector opening delay: (fcnLookUp)
-            %   FNFUL_INJ_OFF_COR   --> Injector offset correction factor: (fcnLookUp)
-            %   FNINJ_CL_DLY        --> Injector offset closing delay: (tableLookUp)
-            %   DIMINPW1            --> Injection effecctive pulesidth:(double)
-            %   DIPWADJ             --> Injection pulsewidth adjustment factor
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
             %--------------------------------------------------------------
-            Names = fieldnames( CalStructure );
-            for Q = 1:numel( Names )
-                obj.( Names( Q ) ) = CalStructure. )
-            end
+            Slp = obj.FNINJSLOPE1F( FRP )./obj.FNDIINJSLPCOR( FRT );
+        end
+        
+        function Off = calcOffset( obj, FRP, FRT, DI_PWEFF )
+            %--------------------------------------------------------------
+            % Calculate the injector offset for the DI system
+            %
+            % Off = obj.calcOffset( FRP, FRT );
+            %
+            % Input Arguments:
+            %
+            % FRP       --> Injection pressure [PSI]
+            % FRT       --> Inferred fuel rail temperature [deg F]
+            % DI_PWEFF  --> Effective pulsewidth [micro sec]
+            %--------------------------------------------------------------
+            Off = obj.FNINJ_OP_DLY.interp( FRP ) + obj.DIPWADJ +...
+                  obj.FNFUL_INJ_OFF_COR.interp( FRT ) -...
+                  obj.FNINJ_CL_DLY.interp( [ FRP( : ), DI_PWEFF( : ) ] );
         end
         
         function Names = getImmutableProps( obj )

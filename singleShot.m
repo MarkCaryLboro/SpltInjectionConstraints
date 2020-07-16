@@ -58,12 +58,74 @@ classdef singleShot
             end
         end
         
-        function injStateMsg( obj )
-            fprintf('\nSingle intake injection requested\n');
+        function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
+            %--------------------------------------------------------------
+            % Calculate the total and effective injection pulsewidths 
+            % in micro seconds
+            %
+            % [ LCL_FUEL_PW, DI_PWEFF ] = obj.calcPulseWidth( MF, FRP, FRT )
+            %
+            % Input Arguments:
+            %
+            % MF    --> Desired fuel mass [lb]
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            %
+            % Output Arguments:
+            %
+            % LCL_FUEL_PW   --> Total fuel pulsewidth
+            % DI_PWEFF      --> Effective fuel pulsewidth
+            %--------------------------------------------------------------
+            Slope = obj.calcSlope( FRP, FRT );
+            %--------------------------------------------------------------
+            % Calculate the effective pulsewidth and apply the lower clip
+            %--------------------------------------------------------------
+            DI_PWEFF = 1000000*MF./Slope;
+            Idx = DI_PWEFF < obj.DIMINPW1;
+            DI_PWEFF( Idx ) = obj.DIMINPW1;
+            %--------------------------------------------------------------
+            % Calculate the injector offset
+            %--------------------------------------------------------------
+            Offset = obj.calcOffset( FRP, FRT, DI_PWEFF );
+            %--------------------------------------------------------------
+            % Calculate the total pulsewidth
+            %--------------------------------------------------------------
+            LCL_FUEL_PW = DI_PWEFF + Offset;
         end
     end % Constructor and ordinary methods
     
     methods ( Access = private )
+        function Slp = calcSlope( obj, FRP, FRT )
+            %--------------------------------------------------------------
+            % calculate the injector slope for the DI system
+            %
+            % Slp = obj.calcSlope( FRP, FRT );
+            %
+            % Input Arguments:
+            %
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            %--------------------------------------------------------------
+            Slp = obj.FNINJSLOPE1F.interp( FRP )./obj.FNDIINJSLPCOR.interp( FRT );
+        end
+        
+        function Off = calcOffset( obj, FRP, FRT, DI_PWEFF )
+            %--------------------------------------------------------------
+            % Calculate the injector offset for the DI system
+            %
+            % Off = obj.calcOffset( FRP, FRT );
+            %
+            % Input Arguments:
+            %
+            % FRP       --> Injection pressure [PSI]
+            % FRT       --> Inferred fuel rail temperature [deg F]
+            % DI_PWEFF  --> Effective pulsewidth [micro sec]
+            %--------------------------------------------------------------
+            Off = obj.FNINJ_OP_DLY.interp( FRP ) + obj.DIPWADJ +...
+                  obj.FNFUL_INJ_OFF_COR.interp( FRT ) -...
+                  obj.FNINJ_CL_DLY.interp( [ FRP( : ), DI_PWEFF( : ) ] );
+        end
+        
         function Names = getImmutableProps( obj )
             %--------------------------------------------------------------
             % Return the names of all the immutable properties in the class
