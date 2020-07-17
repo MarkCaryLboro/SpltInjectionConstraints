@@ -9,12 +9,13 @@ classdef singleShot
         FNFUL_INJ_OFF_COR   fcnLookUp                                       % Injection offset correction
         FNINJ_CL_DLY        tableLookUp                                     % Injector closing delay
         DIMINPW1            double                                          % Minimum injection pulsewidth clip
-        DIPWADJ             double                                          % Incjection pulsewith adjustment
+        DIPWADJ             double                                          % Injection pulsewith adjustment
+        NUMCYL              int8                                            % Number of cylinders
     end
     
     methods
         function obj = singleShot( CalStructure )
-            %-------------------------------------------------------------------------
+            %--------------------------------------------------------------------------
             % singleShot class constructor function
             %
             % obj = singleShot( CalStructure );
@@ -30,8 +31,9 @@ classdef singleShot
             %   FNFUL_INJ_OFF_COR   --> Injector offset correction factor: (fcnLookUp)
             %   FNINJ_CL_DLY        --> Injector offset closing delay: (tableLookUp)
             %   DIMINPW1            --> Injection effecctive pulesidth:(double)
-            %   DIPWADJ             --> Injection pulsewidth adjustment factor
-            %-------------------------------------------------------------------------
+            %   DIPWADJ             --> Injection pulsewidth adjustment factor: (double)
+            %   NUMCYL              --> Number of cylinders: (int8)
+            %--------------------------------------------------------------------------
             if isstruct( CalStructure )
                 %----------------------------------------------------------
                 % Parse the input structure
@@ -80,7 +82,7 @@ classdef singleShot
             %--------------------------------------------------------------
             % Calculate the effective pulsewidth and apply the lower clip
             %--------------------------------------------------------------
-            DI_PWEFF = MF./Slope;
+            DI_PWEFF = 1000000*MF./Slope;
             Idx = DI_PWEFF < obj.DIMINPW1;
             DI_PWEFF( Idx ) = obj.DIMINPW1;
             %--------------------------------------------------------------
@@ -90,7 +92,60 @@ classdef singleShot
             %--------------------------------------------------------------
             % Calculate the total pulsewidth
             %--------------------------------------------------------------
-            LCL_FUEL_PW = DI_PWEFF
+            LCL_FUEL_PW = DI_PWEFF + Offset;
+        end
+        
+        function [ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI )
+            %--------------------------------------------------------------
+            % Calculate the start and end of injection angles. Note for
+            % single shot the SOI is just passed through, but provides a
+            % consistent interface with overloaded child methods.
+            %
+            % [ SOI, EOI ] = obj.calc_pw( MF, N, FRP, FRT, SOI );
+            %
+            % Input Arguments:
+            %
+            % MF    --> Desired fuel mass [lb]
+            % N     --> Engine speed [RPM]
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            %
+            % Output Arguments:
+            %
+            % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            % EOI   --> End of injection angle [deg BTDC Power stroke]
+            %
+            % Note due to reference angle being TDC power stroke, EOI < SOI
+            %--------------------------------------------------------------
+            Time2Angle = 1000000./( 6*N );                                  % time [micro sec] correpsonding to 1 deg of crank rotation
+            %--------------------------------------------------------------
+            % Calculate the total pulsewidth in microseconds
+            %--------------------------------------------------------------
+            LCL_FUEL_PW = obj.calcPulseWidth( MF, FRP, FRT );
+            %--------------------------------------------------------------
+            % Calculate the corresponding injection duration in deg
+            %--------------------------------------------------------------
+            LCL_FUEL_PW_ANGLE = LCL_FUEL_PW/Time2Angle;
+            EOI = SOI - LCL_FUEL_PW_ANGLE;
+        end
+        
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle )
+            %--------------------------------------------------------------------------
+            % Out put a logical output to see if the constraints are met
+            %
+            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            %
+            % Input Arguments:
+            %
+            % MF        --> Desired fuel mass [lb]
+            % N         --> Engine speed [RPM]
+            % FRP       --> Injection pressure [PSI]
+            % FRT       --> Inferred fuel rail temperature [deg F]
+            % SOI       --> Start of injection angle [deg BTDC Power stroke]
+            % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
+            %---------------------------------------------------------------------------
+            [ ~, EOI 
         end
     end % Constructor and ordinary methods
     
@@ -106,7 +161,7 @@ classdef singleShot
             % FRP   --> Injection pressure [PSI]
             % FRT   --> Inferred fuel rail temperature [deg F]
             %--------------------------------------------------------------
-            Slp = obj.FNINJSLOPE1F( FRP )./obj.FNDIINJSLPCOR( FRT );
+            Slp = obj.FNINJSLOPE1F.interp( FRP )./obj.FNDIINJSLPCOR.interp( FRT );
         end
         
         function Off = calcOffset( obj, FRP, FRT, DI_PWEFF )
