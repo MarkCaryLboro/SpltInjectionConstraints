@@ -13,6 +13,10 @@ classdef singleShot
         NUMCYL              int8                                            % Number of cylinders
     end
     
+    properties ( SetAccess = protected, GetAccess = public )
+        NumIntShots         int8                            = int8( 1 )     % number of intake shots
+    end
+    
     methods
         function obj = singleShot( CalStructure )
             %--------------------------------------------------------------------------
@@ -101,7 +105,7 @@ classdef singleShot
             % single shot the SOI is just passed through, but provides a
             % consistent interface with overloaded child methods.
             %
-            % [ SOI, EOI ] = obj.calc_pw( MF, N, FRP, FRT, SOI );
+            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );
             %
             % Input Arguments:
             %
@@ -126,7 +130,7 @@ classdef singleShot
             %--------------------------------------------------------------
             % Calculate the corresponding injection duration in deg
             %--------------------------------------------------------------
-            LCL_FUEL_PW_ANGLE = LCL_FUEL_PW/Time2Angle;
+            LCL_FUEL_PW_ANGLE = LCL_FUEL_PW./Time2Angle;
             EOI = SOI - LCL_FUEL_PW_ANGLE;
         end
         
@@ -150,7 +154,20 @@ classdef singleShot
         end
     end % Constructor and ordinary methods
     
-    methods ( Access = private )
+    methods ( Access = protected )
+        function Names = getImmutableProps( obj )
+            %--------------------------------------------------------------
+            % Return the names of all the immutable properties in the class
+            %
+            % Names = obj.getImmutableProps();
+            %--------------------------------------------------------------
+            MetaData = metaclass( obj );                                    % Create meta class object
+            Mp = MetaData.PropertyList;                                     % List of properties and their attribute
+            Names = string( { (Mp.Name) } );                                % Names of all properties
+            Idx = strcmpi( "immutable", string( { Mp.SetAccess} ) );        % Point to all immutable properties
+            Names = Names( Idx );
+        end 
+        
         function Slp = calcSlope( obj, FRP, FRT )
             %--------------------------------------------------------------
             % calculate the injector slope for the DI system
@@ -181,20 +198,9 @@ classdef singleShot
                   obj.FNFUL_INJ_OFF_COR.interp( FRT ) -...
                   obj.FNINJ_CL_DLY.interp( [ FRP( : ), DI_PWEFF( : ) ] );
         end
-        
-        function Names = getImmutableProps( obj )
-            %--------------------------------------------------------------
-            % Return the names of all the immutable properties in the class
-            %
-            % Names = obj.getImmutableProps();
-            %--------------------------------------------------------------
-            MetaData = metaclass( obj );                                    % Create meta class object
-            Mp = MetaData.PropertyList;                                     % List of properties and their attribute
-            Names = string( { (Mp.Name) } );                                % Names of all properties
-            Idx = strcmpi( "immutable", string( { Mp.SetAccess} ) );        % Point to all immutable properties
-            Names = Names( Idx );
-        end 
-        
+     end % Protected methods
+    
+    methods ( Access = private )       
         function [ Ok, Names ] = allImmutablePropsPresent( obj, CalStructure )
             %--------------------------------------------------------------
             % Check that all immutable property fields are defined.

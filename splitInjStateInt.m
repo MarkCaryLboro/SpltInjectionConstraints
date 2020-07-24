@@ -10,30 +10,122 @@ classdef splitInjStateInt < handle
     
     properties ( Access = private )
         InjCalcs                                                            % Pointer to current concrete state
+        InjCalibration         injArgs                                      % Custom event data for calibration  
     end
     
     methods
-        function obj = splitInjStateInt( Source )
-            %--------------------------------------------------------------
+        function obj = splitInjStateInt( Source, CalStructure, DI_IPW_SEP_IDK )
+            %-------------------------------------------------------------------------
             % Split injection state interface
             %
-            % obj = splitInjStateInt( Source );
+            % Single intake shot syntax:
             %
+            % obj = splitInjStateInt( Source, CalStructure ); 
+            %
+            % Multiple intake shot syntax:
+            %
+            % obj = splitInjStateInt( Source, CalStructure, DI_IPW_SEP_IDK ); 
+            % 
             % Input Arguments:
             % 
-            % Source    --> context object
+            % Source            --> context object
+            % CalStructure      --> Structure of lookup table objects with
+            %                       field names:
+            %
+            %   FNINJSLOPE1F        --> Injector slope: (fcnLookUp)
+            %   FNDINJSLPCOR        --> Injection slope correction factor: (fcnLookUp)
+            %   FNINJ_OP_DLY        --> Injector opening delay: (fcnLookUp)
+            %   FNFUL_INJ_OFF_COR   --> Injector offset correction factor: (fcnLookUp)
+            %   FNINJ_CL_DLY        --> Injector offset closing delay: (tableLookUp)
+            %   DIMINPW1            --> Injection effecctive pulesidth:(double)
+            %   DIPWADJ             --> Injection pulsewidth adjustment factor: (double)
+            %   NUMCYL              --> Number of cylinders: (int8)
+            %
+            % DI_IPW_SEP_IDK    --> Minimum Separation between intake
+            %                       injections.
             %--------------------------------------------------------------
             obj.StateRequest = Source.InjectionState;
+            %--------------------------------------------------------------
+            % Define the special event data property containing the
+            % calibration data
+            %--------------------------------------------------------------
+            obj.InjCalibration = injArgs( Source, CalStructure,...
+                                          DI_IPW_SEP_IDK );
             %--------------------------------------------------------------
             % Define listener for context class request. Switches injection
             % state automatically.
             %--------------------------------------------------------------
+            Fh = @( Src, EventData )obj.selectNumInj( Source,...
+                                                      obj.InjCalibration );
             obj.Listener = addlistener( Source, 'InjectionState',...
-                                        'PostSet', @obj.selectNumInj );
+                                        'PostSet', Fh );
         end
         
-        function calcInjEvent( obj )
-            obj.InjCalcs.injStateMsg();
+        function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
+            %--------------------------------------------------------------
+            % Calculate the total and effective injection pulsewidths 
+            % in micro seconds
+            %
+            % [ LCL_FUEL_PW, DI_PWEFF ] = obj.calcPulseWidth( MF, FRP, FRT )
+            %
+            % Input Arguments:
+            %
+            % MF    --> Desired fuel mass [lb]
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            %
+            % Output Arguments:
+            %
+            % LCL_FUEL_PW   --> Total fuel pulsewidth
+            % DI_PWEFF      --> Effective fuel pulsewidth
+            %--------------------------------------------------------------
+            [ LCL_FUEL_PW, DI_PWEFF ] = obj.InjCalcs.calcPulseWidth( MF, FRP, FRT );
+        end
+                
+        function[ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI )
+            %--------------------------------------------------------------
+            % Calculate the start and end of injection angles. Note for
+            % single shot the SOI is just passed through, but provides a
+            % consistent interface with overloaded child methods.
+            %
+            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );
+            %
+            % Input Arguments:
+            %
+            % MF    --> Desired fuel mass [lb]
+            % N     --> Engine speed [RPM]
+            % FRP   --> Injection pressure [PSI]
+            % FRT   --> Inferred fuel rail temperature [deg F]
+            % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            %
+            % Output Arguments:
+            %
+            % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            % EOI   --> End of injection angle [deg BTDC Power stroke]
+            %
+            % Note due to reference angle being TDC power stroke, EOI < SOI
+            %--------------------------------------------------------------
+            [ SOI, EOI ] = obj.InjCalcs.calc_pw_angle( MF, N, FRP, FRT,...
+                                                       SOI );
+        end
+        
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle )
+            %--------------------------------------------------------------------------
+            % Out put a logical output to see if the constraints are met
+            %
+            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            %
+            % Input Arguments:
+            %
+            % MF        --> Desired fuel mass [lb]
+            % N         --> Engine speed [RPM]
+            % FRP       --> Injection pressure [PSI]
+            % FRT       --> Inferred fuel rail temperature [deg F]
+            % SOI       --> Start of injection angle [deg BTDC Power stroke]
+            % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
+            %---------------------------------------------------------------------------
+            Ok = obj.InjCalcs.constraintMet( MF, N, FRP, FRT, SOI,...
+                                             LastAngle );
         end
     end % constructor and ordinary methods
     
@@ -63,17 +155,19 @@ classdef splitInjStateInt < handle
                     %------------------------------------------------------
                     % Single shot injection
                     %------------------------------------------------------
-                    obj.InjCalcs = singleShot();
+                    obj.InjCalcs = singleShot( EventData.CalStructure );
                 case 2
                     %------------------------------------------------------
                     % Two intake shots
                     %------------------------------------------------------
-                    obj.InjCalcs = twoShots();
+                    obj.InjCalcs = twoShots( EventData.CalStructure, ...
+                                              EventData.DI_IPW_SEP_IDK);
                 case 3
                     %------------------------------------------------------
                     % Three intake shots
                     %------------------------------------------------------
-                    obj.InjCalcs = threeShots();
+                    obj.InjCalcs = threeShots( EventData.calStructure, ...
+                                              EventData.DI_IPW_SEP_IDK);
                 otherwise
                     error('%4.0d injections not supported at this time', obj.StateRequest );
             end
