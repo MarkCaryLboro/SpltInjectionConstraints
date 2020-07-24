@@ -14,7 +14,7 @@ classdef singleShot
     end
     
     properties ( SetAccess = protected, GetAccess = public )
-        NumIntShots         int8                            = int8( 1 )     % number of intake shots
+        NumIntShots         splitInjectionCounts = SingleShot               % number of intake shots
     end
     
     methods

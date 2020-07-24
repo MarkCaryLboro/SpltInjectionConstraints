@@ -34,7 +34,7 @@ classdef twoShots < singleShot
             %--------------------------------------------------------------------------
             obj = obj@singleShot( CalStructure );
             obj.DI_IPW_SEP_IDK = DI_IPW_SEP_IDK;
-            obj.NumIntShots = int8( 2 );
+            obj.NumIntShots = DoubleShot;
         end
         
         function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
