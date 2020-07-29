@@ -5,5 +5,6 @@ classdef splitInjectionCounts < int8
         SingleShot     (1)
         DoubleShot     (2)
         TripleShot     (3)
+        QuadrupleShot  (4)
     end
 end

@@ -171,6 +171,12 @@ classdef splitInjStateInt < handle
                     %------------------------------------------------------
                     obj.InjCalcs = threeShots( EventData.CalStructure, ...
                                               EventData.DI_IPW_SEP_IDK);
+                case "QuadrupleShot"
+                    %------------------------------------------------------
+                    % Four intake shots
+                    %------------------------------------------------------
+                    obj.InjCalcs = threeShots( EventData.CalStructure, ...
+                                              EventData.DI_IPW_SEP_IDK);                
                 otherwise
                     error('%4.0d injections not supported at this time', obj.StateRequest );
             end
