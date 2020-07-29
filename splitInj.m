@@ -6,7 +6,8 @@ classdef splitInj < handle
     end
     
     properties ( SetObservable = true, AbortSet = true )
-        InjectionState  int8    { mustBePositive( InjectionState ),...      % current injection state
+        InjectionState  splitInjectionCounts    {...                        % current injection state
+                                  mustBePositive( InjectionState ),...      
                                   mustBeFinite( InjectionState ),...
                                   mustBeNonNan( InjectionState ),...
                                   mustBeNumeric( InjectionState ),...
@@ -29,11 +30,11 @@ classdef splitInj < handle
                 error('Must supply all 3 arguments to constructor method for class "splitInj"');
             end
             if ( isempty( NumInj ) )
-                NumInj = 1;                                                 % Apply defaults
+                NumInj = "SingleShot";                                      % Apply defaults
             end
             obj.StateIntObj = splitInjStateInt( obj, CalStructure,...       % Retain a pointer to the state interface
                                                 DI_IPW_SEP_IDK );                      
-            obj.InjectionState = int8( NumInj );                            % Set the inital number of injections
+            obj.InjectionState = NumInj;                                    % Set the inital number of injections
         end
         
         function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
@@ -57,11 +58,11 @@ classdef splitInj < handle
             [ LCL_FUEL_PW, DI_PWEFF ] = obj.StateIntObj.calcPulseWidth( MF, FRP, FRT );
         end
         
-        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle )
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, varargin )
             %--------------------------------------------------------------------------
             % Out put a logical output to see if the constraints are met
             %
-            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, SEP );
             %
             % Input Arguments:
             %
@@ -71,17 +72,24 @@ classdef splitInj < handle
             % FRT       --> Inferred fuel rail temperature [deg F]
             % SOI       --> Start of injection angle [deg BTDC Power stroke]
             % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
+            %               Default is BDC intake { 180 }.
+            % SEP       --> Seperation time [micro sec], not required for
+            %               single shot call
             %---------------------------------------------------------------------------
-            Ok = obj.StateIntObj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            if ( nargin < 7 ) || isempty( LastAngle )
+                LastAngle = 180;
+            end
+            Ok = obj.StateIntObj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, varargin{ : } );
         end
         
-        function [ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI )
+        function [ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI, varargin )
             %--------------------------------------------------------------
             % Calculate the start and end of injection angles. Note for
             % single shot the SOI is just passed through, but provides a
             % consistent interface with overloaded child methods.
             %
-            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );
+            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );         % single shot call
+            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, SEP );    % multiple shot call
             %
             % Input Arguments:
             %
@@ -90,6 +98,8 @@ classdef splitInj < handle
             % FRP   --> Injection pressure [PSI]
             % FRT   --> Inferred fuel rail temperature [deg F]
             % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            % SEP   --> Seperation time [micro sec]. Not required for
+            %           single shot injection
             %
             % Output Arguments:
             %
@@ -98,8 +108,7 @@ classdef splitInj < handle
             %
             % Note due to reference angle being TDC power stroke, EOI < SOI
             %--------------------------------------------------------------
-             [ SOI, EOI ] = obj.StateIntObj.calc_pw_angle( MF, N, FRP,...
-                                                           FRT, SOI );
+            [ SOI, EOI ] = obj.StateIntObj.calc_pw_angle( MF, N, FRP, FRT, SOI, varargin{ : } );
         end
 
     end % constructor and ordinary methods
@@ -107,7 +116,7 @@ classdef splitInj < handle
     methods
         function set.InjectionState( obj, Value )
             % Set the current desired number of injections
-            obj.InjectionState = int8( Value );
+            obj.InjectionState = Value;
         end
     end
 end

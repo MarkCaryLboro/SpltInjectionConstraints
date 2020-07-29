@@ -1,4 +1,6 @@
 classdef twoShots < singleShot 
+    % Double intake fuel injection class: Computes pulsewidth sizes and
+    % event angles    
     
     properties ( SetAccess = private )
         DI_IPW_SEP_IDK      double  { mustBePositive( DI_IPW_SEP_IDK ),...  % Minimum separation between intake injections
@@ -34,7 +36,7 @@ classdef twoShots < singleShot
             %--------------------------------------------------------------------------
             obj = obj@singleShot( CalStructure );
             obj.DI_IPW_SEP_IDK = DI_IPW_SEP_IDK;
-            obj.NumIntShots = DoubleShot;
+            obj.NumIntShots = "DoubleShot";
         end
         
         function [ LCL_FUEL_PW, DI_PWEFF ] = calcPulseWidth( obj, MF, FRP, FRT )
@@ -103,13 +105,33 @@ classdef twoShots < singleShot
             % Compute the SOI data
             %--------------------------------------------------------------
             SOI = repmat( SOI, 1, obj.NumIntShots );
-            for Q = 2:obj.NumIntInj
-                SOI( :, Q ) = SOI( :, Q - 1 ) + SepAngle;
+            for Q = 2:int8( obj.NumIntShots )
+                SOI( :, Q ) = SOI( :, Q - 1 ) - SepAngle;
             end
             %--------------------------------------------------------------
             % Compute the corresponding EOI data
             %--------------------------------------------------------------
-            EOI = SOI + LCL_FUEL_PW_ANGLE;
+            EOI = SOI - LCL_FUEL_PW_ANGLE;
+        end
+                
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, SEP )
+            %--------------------------------------------------------------------------
+            % Out put a logical output to see if the constraints are met
+            %
+            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            %
+            % Input Arguments:
+            %
+            % MF        --> Desired fuel mass [lb]
+            % N         --> Engine speed [RPM]
+            % FRP       --> Injection pressure [PSI]
+            % FRT       --> Inferred fuel rail temperature [deg F]
+            % SOI       --> Start of injection angle [deg BTDC Power stroke]
+            % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
+            % SEP   --> Seperation time [micro sec]
+            %---------------------------------------------------------------------------
+            [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, SEP );
+            Ok = ( EOI( :, obj.NumIntShots ) >= LastAngle );
         end
     end
 end

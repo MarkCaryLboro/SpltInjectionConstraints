@@ -82,13 +82,13 @@ classdef splitInjStateInt < handle
             [ LCL_FUEL_PW, DI_PWEFF ] = obj.InjCalcs.calcPulseWidth( MF, FRP, FRT );
         end
                 
-        function[ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI )
+        function[ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI, SEP )
             %--------------------------------------------------------------
             % Calculate the start and end of injection angles. Note for
             % single shot the SOI is just passed through, but provides a
             % consistent interface with overloaded child methods.
             %
-            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );
+            % [ SOI, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, SEP );
             %
             % Input Arguments:
             %
@@ -97,6 +97,8 @@ classdef splitInjStateInt < handle
             % FRP   --> Injection pressure [PSI]
             % FRT   --> Inferred fuel rail temperature [deg F]
             % SOI   --> Start of injection angle [deg BTDC Power stroke]
+            % SEP   --> Seperation time [micro sec]. Not required for
+            %           single shot injection
             %
             % Output Arguments:
             %
@@ -106,14 +108,14 @@ classdef splitInjStateInt < handle
             % Note due to reference angle being TDC power stroke, EOI < SOI
             %--------------------------------------------------------------
             [ SOI, EOI ] = obj.InjCalcs.calc_pw_angle( MF, N, FRP, FRT,...
-                                                       SOI );
+                                                       SOI, SEP  );
         end
         
-        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle )
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, SEP )
             %--------------------------------------------------------------------------
             % Out put a logical output to see if the constraints are met
             %
-            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle );
+            % Ok = obj.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, SEP );
             %
             % Input Arguments:
             %
@@ -123,9 +125,10 @@ classdef splitInjStateInt < handle
             % FRT       --> Inferred fuel rail temperature [deg F]
             % SOI       --> Start of injection angle [deg BTDC Power stroke]
             % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
+            % SEP       --> Seperation time [micro sec]. Ignored for single shot 
+            %               injection
             %---------------------------------------------------------------------------
-            Ok = obj.InjCalcs.constraintMet( MF, N, FRP, FRT, SOI,...
-                                             LastAngle );
+            Ok = obj.InjCalcs.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, SEP );
         end
     end % constructor and ordinary methods
     
@@ -151,22 +154,22 @@ classdef splitInjStateInt < handle
             end
             
             switch obj.StateRequest
-                case 1
+                case "SingleShot"
                     %------------------------------------------------------
-                    % Single shot injection
+                    % Single intake shot 
                     %------------------------------------------------------
                     obj.InjCalcs = singleShot( EventData.CalStructure );
-                case 2
+                case "DoubleShot"
                     %------------------------------------------------------
                     % Two intake shots
                     %------------------------------------------------------
                     obj.InjCalcs = twoShots( EventData.CalStructure, ...
                                               EventData.DI_IPW_SEP_IDK);
-                case 3
+                case "TripleShot"
                     %------------------------------------------------------
                     % Three intake shots
                     %------------------------------------------------------
-                    obj.InjCalcs = threeShots( EventData.calStructure, ...
+                    obj.InjCalcs = threeShots( EventData.CalStructure, ...
                                               EventData.DI_IPW_SEP_IDK);
                 otherwise
                     error('%4.0d injections not supported at this time', obj.StateRequest );

@@ -14,7 +14,7 @@ classdef singleShot
     end
     
     properties ( SetAccess = protected, GetAccess = public )
-        NumIntShots         splitInjectionCounts = SingleShot               % number of intake shots
+        NumIntShots         splitInjectionCounts                            % number of intake shots
     end
     
     methods
@@ -52,6 +52,7 @@ classdef singleShot
                             obj.( ImmutableNames{ Q } ) =...
                                 CalStructure.( ImmutableNames{ Q } );
                         end
+                        obj.NumIntShots = "SingleShot";
                     otherwise
                         %--------------------------------------------------
                         % Print out missing field names & throw an error
@@ -99,7 +100,7 @@ classdef singleShot
             LCL_FUEL_PW = DI_PWEFF + Offset;
         end
         
-        function [ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI )
+        function [ SOI, EOI ] = calc_pw_angle( obj, MF, N, FRP, FRT, SOI, varargin )
             %--------------------------------------------------------------
             % Calculate the start and end of injection angles. Note for
             % single shot the SOI is just passed through, but provides a
@@ -134,7 +135,7 @@ classdef singleShot
             EOI = SOI - LCL_FUEL_PW_ANGLE;
         end
         
-        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle )
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, varargin )
             %--------------------------------------------------------------------------
             % Out put a logical output to see if the constraints are met
             %
@@ -149,8 +150,8 @@ classdef singleShot
             % SOI       --> Start of injection angle [deg BTDC Power stroke]
             % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
             %---------------------------------------------------------------------------
-            [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI );
-            Ok = ( EOI < LastAngle );
+            [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, LastAngle, varargin );
+            Ok = ( EOI( :, obj.NumIntShots ) >= LastAngle );
         end
     end % Constructor and ordinary methods
     
