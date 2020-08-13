@@ -108,7 +108,7 @@ classdef splitInjStateInt < handle
             % Note due to reference angle being TDC power stroke, EOI < SOI
             %--------------------------------------------------------------
             [ SOI, EOI ] = obj.InjCalcs.calc_pw_angle( MF, N, FRP, FRT,...
-                                                       SOI, varargin  );
+                                                       SOI, SEP  );
         end
         
         function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, SEP )
