@@ -108,10 +108,10 @@ classdef splitInjStateInt < handle
             % Note due to reference angle being TDC power stroke, EOI < SOI
             %--------------------------------------------------------------
             [ SOI, EOI ] = obj.InjCalcs.calc_pw_angle( MF, N, FRP, FRT,...
-                                                       SOI, varargin  );
+                                                       SOI, varargin{ : }  );
         end
         
-        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, SEP )
+        function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, varargin )
             %--------------------------------------------------------------------------
             % Out put a logical output to see if the constraints are met
             %
@@ -128,7 +128,7 @@ classdef splitInjStateInt < handle
             % SEP       --> Seperation time [micro sec]. Ignored for single shot 
             %               injection
             %---------------------------------------------------------------------------
-            Ok = obj.InjCalcs.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, SEP );
+            Ok = obj.InjCalcs.constraintMet( MF, N, FRP, FRT, SOI, LastAngle, varargin{ : } );
         end
     end % constructor and ordinary methods
     

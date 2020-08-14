@@ -150,8 +150,10 @@ classdef singleShot
             % SOI       --> Start of injection angle [deg BTDC Power stroke]
             % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
             %---------------------------------------------------------------------------
-            [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, LastAngle, varargin );
+            [ ~, DI_PWEFF ] = obj.calcPulseWidth( MF, FRP, FRT );
+            [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, LastAngle, varargin{ : } );
             Ok = ( EOI( :, obj.NumIntShots ) >= LastAngle );
+            Ok = Ok & ( DI_PWEFF > obj.DIMINPW1 );
         end
     end % Constructor and ordinary methods
     

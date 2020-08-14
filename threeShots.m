@@ -105,13 +105,16 @@ classdef threeShots < singleShot
             % Compute the SOI data
             %--------------------------------------------------------------
             SOI = repmat( SOI, 1, obj.NumIntShots );
-            for Q = 2:int8( obj.NumIntShots )
-                SOI( :, Q ) = SOI( :, Q - 1 ) - SepAngle;
+            EOI = SOI;
+            for Q = 1:int8( obj.NumIntShots )
+                %--------------------------------------------------------------
+                % Compute the corresponding EOI data
+                %--------------------------------------------------------------
+                if Q > 1
+                    SOI( :, Q ) = EOI( :, Q - 1 ) - SepAngle;
+                end
+                EOI( :, Q ) = SOI( :, Q ) - LCL_FUEL_PW_ANGLE;
             end
-            %--------------------------------------------------------------
-            % Compute the corresponding EOI data
-            %--------------------------------------------------------------
-            EOI = SOI - LCL_FUEL_PW_ANGLE;
         end
                 
         function Ok = constraintMet( obj, MF, N, FRP, FRT, SOI, LastAngle, SEP )
@@ -130,8 +133,10 @@ classdef threeShots < singleShot
             % LastAngle --> Last feasible end of injection angle [deg BTDC Power stroke]
             % SEP   --> Seperation time [micro sec]
             %---------------------------------------------------------------------------
+            [ ~, DI_PWEFF ] = obj.calcPulseWidth( MF, FRP, FRT );
             [ ~, EOI ] = obj.calc_pw_angle( MF, N, FRP, FRT, SOI, SEP );
             Ok = ( EOI( :, obj.NumIntShots ) >= LastAngle );
+            Ok = Ok & ( DI_PWEFF > obj.DIMINPW1 );
         end
     end
 end
