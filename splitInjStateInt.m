@@ -1,5 +1,5 @@
 classdef splitInjStateInt < handle
-    % Split injection state abstract interface    
+    % Split injection state interface    
     properties ( SetAccess = protected )
         StateRequest           int8                                         % Current number of injections
     end
